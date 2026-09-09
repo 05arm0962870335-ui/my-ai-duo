@@ -26,7 +26,7 @@ if st.button("🚀 เริ่มค้นหาและวิเคราะ�
                 api_key=openrouter_key,
             )
             response_draft = client_openrouter.chat.completions.create(
-                model="deepseek/deepseek-chat:free",
+                model="meta-llama/llama-3.3-70b-instruct:free",
                 messages=[
                     {"role": "system", "content": "คุณคือผู้เชี่ยวชาญด้านการค้นคว้า ตอบคำถามอย่างละเอียด ถูกต้อง และชัดเจนเป็นภาษาไทย"},
                     {"role": "user", "content": query}
