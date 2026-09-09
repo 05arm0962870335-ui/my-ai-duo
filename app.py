@@ -1,68 +1,63 @@
 import streamlit as st
-from openai import OpenAI
 from google import genai
+from google.genai import types
 
-st.set_page_config(page_title="AI Research Duo (Free)", layout="centered", page_icon="🤖")
+st.set_page_config(page_title="Gemini Multi-Agent Research", layout="centered", page_icon="🧠")
 
-openrouter_key = st.secrets.get("OPENROUTER_API_KEY")
 gemini_key = st.secrets.get("GEMINI_API_KEY")
 
-st.title("🤖 AI Duo: Multi-Agent Research")
-st.caption("ระบบผสานสองโมเดล: ค้นคว้า ร่างข้อมูล และตรวจสอบความถูกต้อง")
+st.title("🧠 Gemini Dual-Agent System")
+st.caption("ระบบ 2 Agent ตรวจสอบกันเอง: Agent 1 ร่างข้อมูลเชิงลึก และ Agent 2 ทำหน้าที่วิจารณ์/ตรวจจับข้อผิดพลาด")
 
-query = st.text_area("พิมพ์คำถามหรือหัวข้อที่ต้องการค้นหา:", placeholder="เช่น เปรียบเทียบข้อดีข้อเสียของ...", height=120)
+query = st.text_area("พิมพ์คำถามหรือหัวข้อที่ต้องการค้นหา:", placeholder="เช่น ข้อดีข้อเสียของรถยนต์ไฟฟ้าเทียบกับรถสันดาป...", height=120)
 
 if st.button("🚀 เริ่มค้นหาและวิเคราะห์", type="primary"):
     if not query.strip():
         st.warning("กรุณาใส่คำถามก่อนครับ")
-    elif not openrouter_key or not gemini_key:
-        st.error("ยังไม่ได้ตั้งค่า API Key ใน Secrets ให้ครบถ้วน")
+    elif not gemini_key:
+        st.error("ไม่พบ GEMINI_API_KEY ใน Secrets กรุณาตรวจสอบการตั้งค่า")
     else:
-        with st.status("กำลังดำเนินการวิเคราะห์ร่วมกัน...", expanded=True) as status:
-            # 1. ร่างข้อมูลผ่าน OpenRouter
-            st.write("🧠 1. กำลังคิดวิเคราะห์และร่างข้อมูลชุดแรก...")
-            client_openrouter = OpenAI(
-                base_url="https://openrouter.ai/api/v1",
-                api_key=openrouter_key,
-                default_headers={
-                    "HTTP-Referer": "https://streamlit.app",
-                    "X-Title": "AI Research Duo",
-                }
-            )
-            response_draft = client_openrouter.chat.completions.create(
-                model="deepseek/deepseek-r1:free",
-                messages=[
-                    {"role": "system", "content": "คุณคือผู้เชี่ยวชาญด้านการค้นคว้า ให้ข้อมูลที่ละเอียด ชัดเจน และมีโครงสร้างที่ดีเป็นภาษาไทย"},
-                    {"role": "user", "content": query}
-                ]
-            )
-            initial_draft = response_draft.choices[0].message.content
+        client = genai.Client(api_key=gemini_key)
 
-            # 2. ให้ Gemini สังเคราะห์และตรวจทาน
-            st.write("🔍 2. Gemini กำลังตรวจสอบข้อเท็จจริงและสรุปคำตอบที่ดีที่สุด...")
-            client_gemini = genai.Client(api_key=gemini_key)
-            
-            synthesis_prompt = f"""
-            หัวข้อ/คำถาม: {query}
-            
-            ข้อมูลที่ร่างโดย AI ตัวแรก:
-            {initial_draft}
-            
-            หน้าที่ของคุณ:
-            1. ตรวจสอบข้อเท็จจริงว่ามีจุดใดคลาดเคลื่อน ลำเอียง หรือล้าสมัยหรือไม่
-            2. เพิ่มมุมมองหรือข้อมูลเชิงลึกที่ตกหล่น
-            3. สรุปเป็น "คำตอบสุดท้ายที่ดีที่สุด" ที่ถูกต้อง ครบถ้วน และอ่านเข้าใจง่ายที่สุดเป็นภาษาไทย
-            """
-            
-            gemini_res = client_gemini.models.generate_content(
+        with st.status("กำลังดำเนินการวิเคราะห์ร่วมกัน...", expanded=True) as status:
+            # Agent 1: Researcher & Drafter
+            st.write("📝 1. Agent A (Researcher) กำลังรวบรวมและร่างข้อมูลชุดแรก...")
+            draft_prompt = f"คำถาม/หัวข้อ: {query}\n\nหน้าที่ของคุณ: ร่างข้อมูล คำอธิบาย และข้อเท็จจริงอย่างละเอียด เป็นขั้นตอน และครอบคลุมทุกประเด็นสำคัญเป็นภาษาไทย"
+            res_draft = client.models.generate_content(
                 model="gemini-2.5-flash",
-                contents=synthesis_prompt
+                contents=draft_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction="คุณคือนักวิจัยข้อมูลเชิงลึก ค้นหาและเรียบเรียงเนื้อหาอย่างรอบด้าน"
+                )
             )
-            final_answer = gemini_res.text
+            draft_text = res_draft.text
+
+            # Agent 2: Critique & Synthesizer
+            st.write("🔍 2. Agent B (Fact-Checker & Auditor) กำลังตรวจสอบข้อผิดพลาดและสังเคราะห์ข้อมูล...")
+            synthesis_prompt = f"""
+            หัวข้อคำถามของผู้ใช้: {query}
+
+            ร่างคำตอบที่ Agent A จัดทำขึ้น:
+            {draft_text}
+
+            หน้าที่ของคุณ:
+            1. ตรวจสอบความถูกต้อง ชี้จุดที่ข้อมูลอาจคลาดเคลื่อน ลำเอียง หรือตกหล่น
+            2. กรองข้อมูลที่ไม่สมเหตุสมผลออก
+            3. สรุปเป็น "คำตอบสุดท้ายที่ดีที่สุด" ที่ถูกต้อง แม่นยำ และอ่านง่ายที่สุดเป็นภาษาไทย
+            """
+            res_final = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=synthesis_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction="คุณคือผู้ตรวจสอบข้อเท็จจริง (Fact-Checker) และบรรณาธิการ มีหน้าที่คัดกรองความผิดพลาดและเรียบเรียงคำตอบที่เชื่อถือได้สูงสุด"
+                )
+            )
+            final_text = res_final.text
             status.update(label="ประมวลผลเสร็จสิ้น!", state="complete")
 
-        st.subheader("📌 คำตอบที่ดีและสมบูรณ์ที่สุด:")
-        st.markdown(final_answer)
+        # แสดงผลลัพธ์
+        st.subheader("📌 คำตอบที่ดีและสมบูรณ์ที่สุด (ผ่านการตรวจสอบแล้ว):")
+        st.markdown(final_text)
 
-        with st.expander("ดูร่างคำตอบแรก"):
-            st.markdown(initial_draft)
+        with st.expander("ดูร่างคำตอบแรกจาก Agent A (ก่อนตรวจทาน)"):
+            st.markdown(draft_text)
