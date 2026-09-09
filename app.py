@@ -2,51 +2,52 @@ import streamlit as st
 from openai import OpenAI
 from google import genai
 
-# ตั้งค่าหน้าเว็บ
-st.set_page_config(page_title="AI Research Duo", layout="centered", page_icon="🤖")
+st.set_page_config(page_title="AI Research Duo (Free)", layout="centered", page_icon="🤖")
 
-# ดึง Key จากระบบหลังบ้าน
-openai_api_key = st.secrets.get("OPENAI_API_KEY")
-gemini_api_key = st.secrets.get("GEMINI_API_KEY")
+openrouter_key = st.secrets.get("OPENROUTER_API_KEY")
+gemini_key = st.secrets.get("GEMINI_API_KEY")
 
-st.title("🤖 AI Duo: Research & Debate")
-st.caption("ส่งคำถามครั้งเดียว ให้ ChatGPT ร่างข้อมูล และ Gemini ช่วยตรวจทานเพื่อคำตอบที่ดีที่สุด")
+st.title("🤖 AI Duo: DeepSeek & Gemini")
+st.caption("ระบบร่วมมือกัน: DeepSeek-V3 ร่างข้อมูลเชิงลึก และ Gemini ช่วยวิเคราะห์ตรวจสอบข้อเท็จจริง")
 
 query = st.text_area("พิมพ์คำถามหรือหัวข้อที่ต้องการค้นหา:", placeholder="เช่น เปรียบเทียบข้อดีข้อเสียของ...", height=120)
 
 if st.button("🚀 เริ่มค้นหาและวิเคราะห์", type="primary"):
     if not query.strip():
         st.warning("กรุณาใส่คำถามก่อนครับ")
-    elif not openai_api_key or not gemini_api_key:
-        st.error("ยังไม่ได้ใส่ API Key ในระบบหลังบ้าน กรุณาตรวจสอบการตั้งค่า Secrets")
+    elif not openrouter_key or not gemini_key:
+        st.error("ยังไม่ได้ตั้งค่า API Key ใน Secrets ให้ครบถ้วน")
     else:
         with st.status("กำลังดำเนินการวิเคราะห์ร่วมกัน...", expanded=True) as status:
-            # 1. ChatGPT เริ่มค้นคว้าและร่างคำตอบแรก
-            st.write("🤖 1. ChatGPT กำลังร่างข้อมูลชุดแรก...")
-            client_openai = OpenAI(api_key=openai_api_key)
-            gpt_response = client_openai.chat.completions.create(
-                model="gpt-4o-mini",
+            # 1. ให้ DeepSeek ผ่าน OpenRouter ร่างข้อมูลชุดแรก
+            st.write("🧠 1. DeepSeek กำลังคิดวิเคราะห์และร่างข้อมูล...")
+            client_openrouter = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=openrouter_key,
+            )
+            response_draft = client_openrouter.chat.completions.create(
+                model="deepseek/deepseek-chat:free",
                 messages=[
-                    {"role": "system", "content": "คุณคือผู้ช่วยค้นคว้า ให้ข้อมูลที่ละเอียด ชัดเจน และมีโครงสร้างที่ดี"},
+                    {"role": "system", "content": "คุณคือผู้เชี่ยวชาญด้านการค้นคว้า ตอบคำถามอย่างละเอียด ถูกต้อง และชัดเจนเป็นภาษาไทย"},
                     {"role": "user", "content": query}
                 ]
             )
-            gpt_draft = gpt_response.choices[0].message.content
+            initial_draft = response_draft.choices[0].message.content
 
             # 2. ส่งให้ Gemini ตรวจสอบและสังเคราะห์คำตอบที่ดีที่สุด
-            st.write("🔍 2. Gemini กำลังตรวจสอบความถูกต้องและข้อเท็จจริง...")
-            client_gemini = genai.Client(api_key=gemini_api_key)
+            st.write("🔍 2. Gemini กำลังตรวจสอบข้อเท็จจริงและสรุปคำตอบที่ดีที่สุด...")
+            client_gemini = genai.Client(api_key=gemini_key)
             
             synthesis_prompt = f"""
             หัวข้อ/คำถาม: {query}
             
-            ข้อมูลที่ร่างโดย AI อีกตัวหนึ่ง:
-            {gpt_draft}
+            ข้อมูลที่ร่างโดย AI ตัวแรก (DeepSeek):
+            {initial_draft}
             
             หน้าที่ของคุณ:
-            1. ตรวจสอบข้อเท็จจริงว่ามีจุดใดคลาดเคลื่อนหรือล้าสมัยหรือไม่
-            2. รวมมุมมองที่ขาดตกบกพร่อง
-            3. สรุปเป็น "คำตอบสุดท้ายที่ดีที่สุด" ที่ถูกต้อง ครบถ้วน และอ่านเข้าใจง่ายที่สุด
+            1. ตรวจสอบข้อเท็จจริงว่ามีจุดใดคลาดเคลื่อน ลำเอียง หรือล้าสมัยหรือไม่
+            2. เพิ่มมุมมองหรือข้อมูลเชิงลึกที่ตกหล่น
+            3. สรุปเป็น "คำตอบสุดท้ายที่ดีที่สุด" ที่ถูกต้อง ครบถ้วน และอ่านเข้าใจง่ายที่สุดเป็นภาษาไทย
             """
             
             gemini_res = client_gemini.models.generate_content(
@@ -56,10 +57,8 @@ if st.button("🚀 เริ่มค้นหาและวิเคราะ�
             final_answer = gemini_res.text
             status.update(label="ประมวลผลเสร็จสิ้น!", state="complete")
 
-        # แสดงผลลัพธ์
         st.subheader("📌 คำตอบที่ดีและสมบูรณ์ที่สุด:")
         st.markdown(final_answer)
 
-        # เมนูพับเก็บดูการโต้แย้ง
-        with st.expander("ดูร่างคำตอบแรกจาก ChatGPT"):
-            st.markdown(gpt_draft)
+        with st.expander("ดูร่างคำตอบแรกจาก DeepSeek"):
+            st.markdown(initial_draft)
