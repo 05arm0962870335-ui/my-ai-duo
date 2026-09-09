@@ -24,7 +24,7 @@ if st.button("🚀 เริ่มค้นหาและวิเคราะ�
             st.write("📝 1. Agent A (Researcher) กำลังรวบรวมและร่างข้อมูลชุดแรก...")
             draft_prompt = f"คำถาม/หัวข้อ: {query}\n\nหน้าที่ของคุณ: ร่างข้อมูล คำอธิบาย และข้อเท็จจริงอย่างละเอียด เป็นขั้นตอน และครอบคลุมทุกประเด็นสำคัญเป็นภาษาไทย"
             res_draft = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-1.5-flash",
                 contents=draft_prompt,
                 config=types.GenerateContentConfig(
                     system_instruction="คุณคือนักวิจัยข้อมูลเชิงลึก ค้นหาและเรียบเรียงเนื้อหาอย่างรอบด้าน"
@@ -46,7 +46,7 @@ if st.button("🚀 เริ่มค้นหาและวิเคราะ�
             3. สรุปเป็น "คำตอบสุดท้ายที่ดีที่สุด" ที่ถูกต้อง แม่นยำ และอ่านง่ายที่สุดเป็นภาษาไทย
             """
             res_final = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-1.5-flash",
                 contents=synthesis_prompt,
                 config=types.GenerateContentConfig(
                     system_instruction="คุณคือผู้ตรวจสอบข้อเท็จจริง (Fact-Checker) และบรรณาธิการ มีหน้าที่คัดกรองความผิดพลาดและเรียบเรียงคำตอบที่เชื่อถือได้สูงสุด"
