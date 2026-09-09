@@ -20,7 +20,7 @@ if st.button("🚀 เริ่มค้นหาและวิเคราะ�
         genai.configure(api_key=gemini_key.strip())
         
         # เลือกโมเดลที่เสถียรที่สุด
-        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        model = genai.GenerativeModel("gemini-1.5-flash")
 
         with st.status("กำลังดำเนินการวิเคราะห์ร่วมกัน...", expanded=True) as status:
             # 1. Agent A: ร่างข้อมูล
